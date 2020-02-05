@@ -64,8 +64,12 @@ func PedersenHashBytes(name string, bytes []byte) (*babyjub.Point, error) {
 	}
 	// Split into 3 bit windows
 	bitsLen := len(bytes) * 8
-	windows := []byte{}
-	for i := 0; i < bitsLen/3; i++ {
+	var windows []byte
+	round := bitsLen / 3
+	if bitsLen%3 != 0 {
+		round++
+	}
+	for i := 0; i < round; i++ {
 		result, err := get3BitsAt(i*3, bytes)
 		if err != nil {
 			return nil, err

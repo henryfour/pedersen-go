@@ -3,6 +3,10 @@ package pedersen
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"math/big"
+	"pedersen-go/babyjub"
+	"strconv"
+	"strings"
 )
 
 func getBitAt(index int, bytes []byte) (byte, error) {
@@ -10,7 +14,7 @@ func getBitAt(index int, bytes []byte) (byte, error) {
 	if startByte > len(bytes)-1 {
 		return byte(0), errors.New("out of index")
 	}
-	bit := byte(0x80) >> uint(index % 8)
+	bit := byte(0x80) >> uint(index%8)
 	if bytes[startByte]&bit == 0 {
 		return 0, nil
 	} else {
@@ -63,7 +67,7 @@ func bytesToBits(bytes []byte) []byte {
 	bits := make([]byte, 8*len(bytes))
 	p := 0
 	for _, v := range bytes {
-		for j := 0; j < 8; j ++ {
+		for j := 0; j < 8; j++ {
 			if (v & (byte(0x80) >> j)) != 0 {
 				bits[p] = 1
 			}
@@ -71,4 +75,34 @@ func bytesToBits(bytes []byte) []byte {
 		}
 	}
 	return bits
+}
+
+func bytes32ToBits(bytes32 [32]byte) []byte {
+	return bytesToBits(bytes32[:])
+}
+
+// convert bits to zokrates field array
+func bitsToFieldArray(bits []byte) string {
+	sb := strings.Builder{}
+	sb.WriteString("[")
+	for i, v := range bits {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(strconv.Itoa(int(v)))
+	}
+	sb.WriteString("]")
+	return sb.String()
+}
+
+// Pack point method reference from edwardsCompress.zok in zokrates
+func PackPoint(point *babyjub.Point) [32]byte {
+	yBytes := point.Y.Bytes()
+	res := [32]byte{}
+	copy(res[len(res)-len(yBytes):], yBytes)
+	// use odd or even, not sign
+	if point.X.Mod(point.X, big.NewInt(2)).Cmp(big.NewInt(1)) == 0 {
+		res[0] = res[0] | 0x80
+	}
+	return res
 }

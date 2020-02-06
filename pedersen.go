@@ -9,6 +9,7 @@ import (
 )
 
 // var sha256Hash = sha256.New()
+const zokratesName = "test"
 
 func pedersenHashBasePoint(name string, i int) (*babyjub.Point, error) {
 	if i > 0xFFFF {
@@ -58,7 +59,11 @@ func pedersenHashWindows(name string, windows []byte) (*babyjub.Point, error) {
 	return result, nil
 }
 
-func PedersenHashBytes(name string, bytes []byte) (*babyjub.Point, error) {
+func PedersenHashBytes(name string, bytesArray ...[]byte) (*babyjub.Point, error) {
+	bytes := []byte{}
+	for _, item := range bytesArray {
+		bytes = append(bytes, item...)
+	}
 	if len(bytes) == 0 {
 		return nil, errors.New("Cannot hash on null bytes")
 	}

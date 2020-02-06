@@ -56,28 +56,36 @@ func TestPedersen_generate(t *testing.T) {
 	point, err := PedersenHashBytes(zokratesName, eBytes, eBytes)
 	require.NoError(t, err)
 	hPx1Bits := bytes32ToBits(PackPoint(point))
-	// hPx32 - pedersen hash x32
+	// hPx16, hPx32 - pedersen hash x16, x32
+	var hPx16Bits []byte
 	for i := 1; i < 32; i++ {
 		prev := PackPoint(point)
+		if i == 16 {
+			hPx16Bits = bytes32ToBits(prev)
+		}
 		point, err = PedersenHashBytes(zokratesName, prev[:], eBytes)
 		require.NoError(t, err)
 	}
 	hPx32Bits := bytes32ToBits(PackPoint(point))
 
-	hs := sha256.New()
-	hs.Write(eBytes)
 	// hSx1 - sha256 hash x1
-	hs.Write(eBytes)
-	hSx1Bits := bytesToBits(hs.Sum(nil))
+	prev := sha256.Sum256(eBytes)
+	hSx1Bits := bytesToBits(prev[:])
+	// hSx16, hSx32 - sha256 hash x16, x32
+	var hSx16Bits []byte
 	for i := 1; i < 32; i++ {
-		hs.Write(eBytes)
+		if i == 16 {
+			hSx16Bits = bytesToBits(prev[:])
+		}
+		prev = sha256.Sum256(prev[:])
 	}
-	hSx32Bits := bytesToBits(hs.Sum(nil))
+	hSx32Bits := bytesToBits(prev[:])
 
 	fmt.Printf("data bits: %v\n", bitsToFieldArray(eBits))
 	fmt.Printf("petersen  x1: %v\n", bitsToFieldArray(hPx1Bits))
+	fmt.Printf("petersen x16: %v\n", bitsToFieldArray(hPx16Bits))
 	fmt.Printf("petersen x32: %v\n", bitsToFieldArray(hPx32Bits))
 	fmt.Printf("sha256    x1: %v\n", bitsToFieldArray(hSx1Bits))
+	fmt.Printf("sha256   x16: %v\n", bitsToFieldArray(hSx16Bits))
 	fmt.Printf("sha256   x32: %v\n", bitsToFieldArray(hSx32Bits))
 }
-

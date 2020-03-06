@@ -3,7 +3,6 @@ package babyjub
 import (
 	"crypto/rand"
 	"math/big"
-	mimc7 "pedersen-go/mimic7"
 )
 
 // pruneBuffer prunes the buffer during key generation according to RFC 8032.
@@ -162,46 +161,4 @@ func (s *Signature) Decompress(buf [64]byte) (*Signature, error) {
 // fails.
 func (s *SignatureComp) Decompress() (*Signature, error) {
 	return new(Signature).Decompress(*s)
-}
-
-// SignMimc7 signs a message encoded as a big.Int in Zq using blake-512 hash
-// for buffer hashing and mimc7 for big.Int hashing.
-func (k *PrivateKey) SignMimc7(msg *big.Int) *Signature {
-	h1 := Blake512(k[:])
-	msgBuf := BigIntLEBytes(msg)
-	msgBuf32 := [32]byte{}
-	copy(msgBuf32[:], msgBuf[:])
-	rBuf := Blake512(append(h1[32:], msgBuf32[:]...))
-	r := SetBigIntFromLEBytes(new(big.Int), rBuf) // r = H(H_{32..63}(k), msg)
-	r.Mod(r, SubOrder)
-	R8 := NewPoint().Mul(r, B8) // R8 = r * 8 * B
-	A := k.Public().Point()
-	hmInput, err := mimc7.BigIntsToRElems([]*big.Int{R8.X, R8.Y, A.X, A.Y, msg})
-	if err != nil {
-		panic(err)
-	}
-	hm := mimc7.Hash(hmInput, nil) // hm = H1(8*R.x, 8*R.y, A.x, A.y, msg)
-	S := new(big.Int).Lsh(k.Scalar().BigInt(), 3)
-	S = S.Mul(hm, S)
-	S.Add(r, S)
-	S.Mod(S, SubOrder) // S = r + hm * 8 * s
-
-	return &Signature{R8: R8, S: S}
-}
-
-// VerifyMimc7 verifies the signature of a message encoded as a big.Int in Zq
-// using blake-512 hash for buffer hashing and mimc7 for big.Int hashing.
-func (p *PublicKey) VerifyMimc7(msg *big.Int, sig *Signature) bool {
-	hmInput, err := mimc7.BigIntsToRElems([]*big.Int{sig.R8.X, sig.R8.Y, p.X, p.Y, msg})
-	if err != nil {
-		panic(err)
-	}
-	hm := mimc7.Hash(hmInput, nil) // hm = H1(8*R.x, 8*R.y, A.x, A.y, msg)
-
-	left := NewPoint().Mul(sig.S, B8) // left = s * 8 * B
-	r1 := big.NewInt(8)
-	r1.Mul(r1, hm)
-	right := NewPoint().Mul(r1, p.Point())
-	right.Add(sig.R8, right) // right = 8 * R + 8 * hm * A
-	return (left.X.Cmp(right.X) == 0) && (left.Y.Cmp(right.Y) == 0)
 }
